@@ -214,7 +214,9 @@ export async function runBenchmarks(
   // Publish initial progress data
   await publishProgress(progress, ProgressState.BenchmarkingStart, progressCb);
 
-  if (!silent) {
+  const shouldOutput = !silent || progressCb !== undefined
+
+  if (shouldOutput) {
     console.log(
       "running",
       benchmarks.length,
@@ -224,7 +226,7 @@ export async function runBenchmarks(
 
   // Iterating given benchmark definitions (await-in-loop)
   for (const { name, runs = 0, func } of benchmarks) {
-    if (!silent) {
+    if (shouldOutput) {
       // See https://github.com/denoland/deno/pull/1452 about groupCollapsed
       console.groupCollapsed(`benchmark ${name} ... `);
     }
@@ -302,7 +304,7 @@ export async function runBenchmarks(
     } catch (err) {
       failError = err;
 
-      if (!silent) {
+      if (shouldOutput) {
         console.groupEnd();
         console.error(red(err.stack));
       }
@@ -310,7 +312,7 @@ export async function runBenchmarks(
       break;
     }
 
-    if (!silent) {
+    if (shouldOutput) {
       // Reporting
       console.log(blue(result));
       console.groupEnd();
@@ -326,7 +328,7 @@ export async function runBenchmarks(
   // Publish final result in Cb too
   await publishProgress(progress, ProgressState.BenchmarkingEnd, progressCb);
 
-  if (!silent) {
+  if (shouldOutput) {
     // Closing results
     console.log(
       `benchmark result: ${failError ? red("FAIL") : blue("DONE")}. ` +
