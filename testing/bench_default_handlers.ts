@@ -1,8 +1,10 @@
-import { BenchmarkRunProgress, ProgressState } from "./bench.ts"
-import { sumOf } from "../collections/sum_of.ts"
-import { deepMerge } from "../collections/deep_merge.ts"
+import { BenchmarkRunProgress, ProgressState } from "./bench.ts";
+import { sumOf } from "../collections/sum_of.ts";
+import { deepMerge } from "../collections/deep_merge.ts";
 
-export type BenchmarkProgressHandler = (progress: BenchmarkRunProgress) => void | Promise<void>
+export type BenchmarkProgressHandler = (
+  progress: BenchmarkRunProgress,
+) => void | Promise<void>;
 
 /**
  * Returns a benchmark progress handler uusing the given config with sane defaults.
@@ -17,147 +19,192 @@ export type BenchmarkProgressHandler = (progress: BenchmarkRunProgress) => void 
  * ```ts
  * import { standardProgressReporter } from "./bench_default_handlers.ts";
  * import { bench, runBenchmarks } from "../testing/bench.ts";
- * 
+ *
  * bench(() => {
  *   b.start();
  *   for (let i = 0; i < 1e9; i++);
  *   b.stop();
  * });
- * 
+ *
  * runBenchmarks(standardProgressReporter());
  * ```
  */
-export function standardProgressReporter(options?: StandardProgressReporterOptions): BenchmarkProgressHandler {
-    const {
-        formatter,
-        logger,
-        progressFile,
-        fileVerbosity,
-    } = deepMerge(
-        defaultOptions,
-        options ?? {}
-    )
+export function standardProgressReporter(
+  options?: StandardProgressReporterOptions,
+): BenchmarkProgressHandler {
+  const {
+    formatter,
+    logger,
+    clearPartialUpdateLogs,
+    loggerVerbosity,
+    progressFile,
+    fileVerbosity,
+  } = deepMerge(
+    defaultOptions,
+    options ?? {},
+  );
 
-    return async (progress: BenchmarkRunProgress) => {
-        const message = formatter(progress)
+  return async (progress: BenchmarkRunProgress) => {
+    const message = formatter(progress);
 
-        switch (progress?.state) {
-            case ProgressState.BenchmarkingStart:
-            case ProgressState.BenchmarkingEnd:
-            case ProgressState.BenchStart:
-            case ProgressState.BenchResult:
-                logger(message)
+    switch (progress?.state) {
+      case ProgressState.BenchmarkingStart:
+      case ProgressState.BenchmarkingEnd:
+      case ProgressState.BenchStart:
+      case ProgressState.BenchResult:
+        logger(message + "\n");
 
-                if (progressFile !== undefined) {
-                    await Deno.writeTextFile(progressFile, message, { append: true })
-                }
+        if (progressFile !== undefined) {
+          await Deno.writeTextFile(progressFile, message + "\n", {
+            append: true,
+          });
+        }
 
-                break;
+        break;
 
-            case ProgressState.BenchPartialResult:
-                if (fileVerbosity > ReporterVerbosity.ExcludePartialResults) {
-                    logger(message)
+      case ProgressState.BenchPartialResult:
+        if (loggerVerbosity > ReporterVerbosity.ExcludePartialResults) {
+          if (clearPartialUpdateLogs) {
+            logger(message + "\r");
+          } else {
+            logger(message + "\r");
+          }
+        }
 
-                    if (progressFile !== undefined) {
-                        await Deno.writeTextFile(progressFile, message, { append: true })
-                    }
-                }
+        if (
+          fileVerbosity > ReporterVerbosity.ExcludePartialResults &&
+          progressFile !== undefined
+        ) {
+          if (progressFile !== undefined) {
+            await Deno.writeTextFile(progressFile, message + "\n", {
+              append: true,
+            });
+          }
         }
     }
+  };
 }
 
 /**
  * Options to pass to `standardProgressReporter` to customize its behaviour
  */
 export type StandardProgressReporterOptions = {
-    /**
+  /**
      * Function to transform progress events into messages.
      *
      * Defaults to a simple formatter that tries to include
      * most significant points without being too verbose
      **/
-    formatter?: (progress: BenchmarkRunProgress) => string,
-    /**
+  formatter?: (progress: BenchmarkRunProgress) => string;
+  /**
      * Function that will be called with every formatted message to be logged.
      *
      * Defaults to `console.log`
      **/
-    logger?: (message: string) => void,
-    /**
+  logger?: (message: string) => void;
+  clearPartialUpdateLogs?: boolean;
+  /**
      * Defined which event's messages should be passed to the `logger`
      *
      * Defaults to `IncludePartialResults`, which is all messages
      **/
-    loggerVerbosity?: ReporterVerbosity,
-    /**
+  loggerVerbosity?: ReporterVerbosity;
+  /**
      * Path to a text file that messages should be appended to. Will create
      * the file if it does not exist.
      *
      * Defaults to no file output
      **/
-    progressFile?: string,
-    /**
+  progressFile?: string;
+  /**
      * Defines which event's messages should be written into the `progressFile`
      *
      * Defaults to `ExcludePartialResults`, only writing bench-level messages
      **/
-    fileVerbosity?: ReporterVerbosity,
-}
+  fileVerbosity?: ReporterVerbosity;
+};
 
 /**
  * Defines which messages to ignore deepending on the `BenchmarkRunProgress`
  * event that caused it
 */
 export enum ReporterVerbosity {
-    /** Include all messages, which will include a message for each run of a single benchmark */
-    IncludePartialResults = 20,
-    /** Exlude messages caused by sigle runs of a specific benchmark */
-    ExcludePartialResults = 10,
+  /** Include all messages, which will include a message for each run of a single benchmark */
+  IncludePartialResults = 20,
+  /** Exlude messages caused by sigle runs of a specific benchmark */
+  ExcludePartialResults = 10,
 }
+
+const textEncoder = new TextEncoder();
 
 const defaultOptions: StandardProgressReporterOptions = {
-    logger: (it) => console.log(it),
-    loggerVerbosity: ReporterVerbosity.IncludePartialResults,
-    formatter: defaultFormatter,
-    fileVerbosity: ReporterVerbosity.ExcludePartialResults,
-}
+  logger: (it) => Deno.stdout.writeSync(textEncoder.encode(it)),
+  loggerVerbosity: ReporterVerbosity.IncludePartialResults,
+  clearPartialUpdateLogs: true,
+  formatter: defaultFormatter,
+  fileVerbosity: ReporterVerbosity.ExcludePartialResults,
+};
+
+const numberFormatter = new Intl.NumberFormat();
 
 function defaultFormatter(progress: BenchmarkRunProgress): string {
-    const newState = progress.state ?? null
-    const finishedBenches = progress.results.length
-    const runningBenches = progress?.running ? 1 : 0
-    const totalBenches = finishedBenches + runningBenches + (progress?.queued?.length ?? 0)
-    const totalBenchProgress = `[${finishedBenches + runningBenches}/${totalBenches}]`
+  const newState = progress.state ?? null;
+  const finishedBenches = progress.results.length;
+  const runningBenches = progress?.running ? 1 : 0;
+  const totalBenches = finishedBenches + runningBenches +
+    (progress?.queued?.length ?? 0);
 
-    switch (newState) {
-        case ProgressState.BenchmarkingStart:
-            return `Starting benchmark${progress.filtered != 0 ? ` skipping ${progress.filtered} benches` : ''}...`
-        case ProgressState.BenchStart:
-            return `${totalBenchProgress} Running benchmark '${progress.running?.name}' for ${progress.running?.runsCount} runs...`
-        case ProgressState.BenchPartialResult: {
-            const running = progress?.running ?? error(`Received BenchResult event without running bench`)
-            const runningName = running.name
-            const runNumber = running.measuredRunsMs.length
-            const runTime = running.measuredRunsMs.at(-1)
+  const totalBenchesString = totalBenches.toString();
+  const currentBench = (finishedBenches + runningBenches).toString().padStart(
+    totalBenchesString.length,
+    " ",
+  );
+  const totalBenchProgress = `[${currentBench}/${totalBenchesString}]`;
 
-            return `${totalBenchProgress} ...finished run ${runNumber} of benchmark ${runningName} in ${runTime}ms...`
-        }
-        case ProgressState.BenchResult: {
-            const finishedResult = progress.results.at(-1) ?? error(`Received BenchResult event without finished result`)
-            const finishedName = finishedResult.name
+  switch (newState) {
+    case ProgressState.BenchmarkingStart:
+      return `Starting benchmark${
+        progress.filtered != 0 ? ` skipping ${progress.filtered} benches` : ""
+      }...`;
+    case ProgressState.BenchStart:
+      return `${totalBenchProgress} Running benchmark '${progress.running
+        ?.name}' for ${progress.running?.runsCount} runs`;
+    case ProgressState.BenchPartialResult: {
+      const running = progress?.running ??
+        error(`Received BenchResult event without running bench`);
 
-            return `${totalBenchProgress} ...finished benchmark '${finishedName}' after ${finishedResult?.runsCount} runs in ${finishedResult?.totalMs}ms`
-        }
-        case ProgressState.BenchmarkingEnd: {
-            const totalMeasuredTime = sumOf(progress.results, it => it.totalMs)
+      const totalRuns = running.runsCount;
+      const runNumber = running.measuredRunsMs.length;
+      const runTime = running.measuredRunsMs.at(-1) ??
+        error(`Received BenchResult event without measured run being set`);
 
-            return `...benchmarking finished!\n\n# of benchmarks run:\t${progress.results.length}\nTotal measured time:\t${totalMeasuredTime}`
-        }
+      return `${totalBenchProgress} ...finished run ${runNumber} of ${totalRuns} in ${
+        numberFormatter.format(runTime)
+      }ms...`;
     }
+    case ProgressState.BenchResult: {
+      const finishedResult = progress.results.at(-1) ??
+        error(`Received BenchResult event without finished result`);
 
-    throw new Error(`Received unexpected benchmark ProgressState ${newState} in state ${currentState}`)
+      return [
+        `Finished. Results:`,
+        `Runs:\t${numberFormatter.format(finishedResult?.runsCount)}`,
+        `Avg:\t${numberFormatter.format(finishedResult?.measuredRunsAvgMs)} ms`,
+        `Total:\t${numberFormatter.format(finishedResult?.totalMs)} ms\n`,
+      ]
+        .map((it) => `${totalBenchProgress} ${it}`)
+        .join("\n");
+    }
+    case ProgressState.BenchmarkingEnd: {
+      const totalMeasuredTime = sumOf(progress.results, (it) => it.totalMs);
+
+      return `...benchmarking finished!\n\n# of benchmarks run:\t${progress.results.length}\nTotal measured time:\t${totalMeasuredTime}`;
+    }
+  }
+
+  throw new Error(`Received unexpected benchmark ProgressState ${newState}`);
 }
 
 function error(msg: string): never {
-    throw new Error(msg)
+  throw new Error(msg);
 }
