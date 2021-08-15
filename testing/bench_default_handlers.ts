@@ -165,10 +165,10 @@ function defaultFormatter(progress: BenchmarkRunProgress): string {
     case ProgressState.BenchmarkingStart:
       return `Starting benchmark${
         progress.filtered != 0 ? ` skipping ${progress.filtered} benches` : ""
-      }...`;
+      }...\n`;
     case ProgressState.BenchStart:
-      return `${totalBenchProgress} Running benchmark '${progress.running
-        ?.name}' for ${progress.running?.runsCount} runs`;
+      return `${totalBenchProgress} Running benchmark ${progress.running
+        ?.name} for ${progress.running?.runsCount} runs`;
     case ProgressState.BenchPartialResult: {
       const running = progress?.running ??
         error(`Received BenchResult event without running bench`);
@@ -180,7 +180,7 @@ function defaultFormatter(progress: BenchmarkRunProgress): string {
 
       return `${totalBenchProgress} ...finished run ${runNumber} of ${totalRuns} in ${
         numberFormatter.format(runTime)
-      }ms...`;
+      }ms`;
     }
     case ProgressState.BenchResult: {
       const finishedResult = progress.results.at(-1) ??
@@ -189,8 +189,8 @@ function defaultFormatter(progress: BenchmarkRunProgress): string {
       return [
         `Finished. Results:`,
         `Runs:\t${numberFormatter.format(finishedResult?.runsCount)}`,
-        `Avg:\t${numberFormatter.format(finishedResult?.measuredRunsAvgMs)} ms`,
-        `Total:\t${numberFormatter.format(finishedResult?.totalMs)} ms\n`,
+        `Avg:\t${numberFormatter.format(finishedResult?.measuredRunsAvgMs)}ms`,
+        `Total:\t${numberFormatter.format(finishedResult?.totalMs)}ms\n`,
       ]
         .map((it) => `${totalBenchProgress} ${it}`)
         .join("\n");
@@ -198,7 +198,7 @@ function defaultFormatter(progress: BenchmarkRunProgress): string {
     case ProgressState.BenchmarkingEnd: {
       const totalMeasuredTime = sumOf(progress.results, (it) => it.totalMs);
 
-      return `...benchmarking finished!\n\n# of benchmarks run:\t${progress.results.length}\nTotal measured time:\t${totalMeasuredTime}`;
+      return `...benchmarking finished!\n\nBenchmarks ran:\t${progress.results.length}\nTotal measured time:\t${numberFormatter.format(totalMeasuredTime)}ms`;
     }
   }
 
