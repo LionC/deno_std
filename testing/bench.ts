@@ -214,7 +214,7 @@ export async function runBenchmarks(
   // Publish initial progress data
   await publishProgress(progress, ProgressState.BenchmarkingStart, progressCb);
 
-  const shouldOutput = !silent || progressCb !== undefined
+  const shouldOutput = !silent && progressCb === undefined
 
   if (shouldOutput) {
     console.log(
