@@ -24,18 +24,19 @@ export type BenchmarkProgressHandler = (progress: BenchmarkRunProgress) => void 
  *   b.stop();
  * });
  * 
- * runBenchmarks(standardProgressReporter());
+ * runBenchmarks({}, standardProgressReporter());
  * ```
  */
-export function standardProgressReporter(options?: StandardProgressReporterOptions): BenchmarkProgressHandler {
+export function standardProgressReporter(options: StandardProgressReporterOptions = {}): BenchmarkProgressHandler {
     const {
         formatter,
         logger,
         progressFile,
+        loggerVerbosity,
         fileVerbosity,
     } = deepMerge(
         defaultOptions,
-        options ?? {}
+        options,
     )
 
     return async (progress: BenchmarkRunProgress) => {
@@ -55,12 +56,12 @@ export function standardProgressReporter(options?: StandardProgressReporterOptio
                 break;
 
             case ProgressState.BenchPartialResult:
-                if (fileVerbosity > ReporterVerbosity.ExcludePartialResults) {
+                if (loggerVerbosity > ReporterVerbosity.ExcludePartialResults) {
                     logger(message)
+                }
 
-                    if (progressFile !== undefined) {
-                        await Deno.writeTextFile(progressFile, message, { append: true })
-                    }
+                if (progressFile !== undefined && fileVerbosity > ReporterVerbosity.ExcludePartialResults) {
+                    await Deno.writeTextFile(progressFile, message, { append: true })
                 }
         }
     }
@@ -155,7 +156,7 @@ function defaultFormatter(progress: BenchmarkRunProgress): string {
         }
     }
 
-    throw new Error(`Received unexpected benchmark ProgressState ${newState} in state ${currentState}`)
+    throw new Error(`Received unexpected benchmark ProgressState ${newState}`)
 }
 
 function error(msg: string): never {
