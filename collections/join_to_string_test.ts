@@ -41,7 +41,7 @@ Deno.test({
   fn() {
     joinToStringTest(
       [
-        [ "A", "B", "C" ],
+        ["A", "B", "C"],
         (it) => it,
         "",
       ],
@@ -56,9 +56,9 @@ Deno.test({
     joinToStringTest(
       [
         [
-            { name: "Neela" },
-            { name: "Jonas" },
-            { name: "Marija" },
+          { name: "Neela" },
+          { name: "Jonas" },
+          { name: "Marija" },
         ],
         (it) => it.name,
         " and ",
@@ -67,7 +67,7 @@ Deno.test({
     );
     joinToStringTest(
       [
-        [ "Noam Chomsky", "Alan Turing", "Konrad Zuse" ],
+        ["Noam Chomsky", "Alan Turing", "Konrad Zuse"],
         (it) => `Dr. ${it}`,
         " + ",
       ],

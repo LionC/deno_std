@@ -26,11 +26,11 @@ export function joinToString<T>(
   delimiter: string,
 ): string {
   let ret = "";
-//   let tail = false;
-// 
-//   for (const i of array) {
-//     ret += selector(i);
-//   }
-// 
+  //   let tail = false;
+  //
+  //   for (const i of array) {
+  //     ret += selector(i);
+  //   }
+  //
   return ret;
 }
