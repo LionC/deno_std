@@ -10,6 +10,7 @@ import { Response } from "./server.ts";
 import { FileServerArgs } from "./file_server.ts";
 import { dirname, fromFileUrl, join, resolve } from "../path/mod.ts";
 import { iter, readAll, writeAll } from "../io/util.ts";
+import { isWindows } from "../_util/os.ts";
 
 let fileServer: Deno.Process<Deno.RunOptions & { stdout: "piped" }>;
 
@@ -201,9 +202,9 @@ Deno.test("serveDirectory", async function () {
     // `Deno.FileInfo` is not completely compatible with Windows yet
     // TODO(bartlomieju): `mode` should work correctly in the future.
     // Correct this test case accordingly.
-    Deno.build.os !== "windows" &&
+    isWindows === false &&
       assert(/<td class="mode">(\s)*\([a-zA-Z-]{10}\)(\s)*<\/td>/.test(page));
-    Deno.build.os === "windows" &&
+    isWindows &&
       assert(/<td class="mode">(\s)*\(unknown mode\)(\s)*<\/td>/.test(page));
     assert(page.includes(`<a href="/README.md">README.md</a>`));
   } finally {
@@ -820,8 +821,8 @@ Deno.test("file_server sets `Date` header correctly", async () => {
     const dateHeader = res.headers.get("date") as string;
     const date = Date.parse(dateHeader);
     const fileInfo = await getTestFileStat();
-    const expectedTime = fileInfo.mtime && fileInfo.mtime instanceof Date
-      ? fileInfo.mtime.getTime()
+    const expectedTime = fileInfo.atime && fileInfo.atime instanceof Date
+      ? fileInfo.atime.getTime()
       : Number.NaN;
     const round = (d: number) => Math.floor(d / 1000 / 60 / 30); // Rounds epochs to 2 minute units, to accomodate minor variances in how long the test(s) take to execute
     assertEquals(round(date), round(expectedTime));

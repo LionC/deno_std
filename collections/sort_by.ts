@@ -1,12 +1,13 @@
 // Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
 
 /**
- * Returns all elements in the given collection, sorted by their result using the given selector
+ * Returns all elements in the given collection, sorted stably by their result using the given selector. The selector function is called only once for each element.
  *
  * Example:
  *
  * ```ts
  * import { sortBy } from "./sort_by.ts"
+ * import { assertEquals } from "../testing/asserts.ts";
  *
  * const people = [
  *     { name: 'Anna', age: 34 },
@@ -15,7 +16,7 @@
  * ]
  * const sortedByAge = sortBy(people, it => it.age)
  *
- * console.assert(sortedByAge === [
+ * assertEquals(sortedByAge, [
  *     { name: 'John', age: 23 },
  *     { name: 'Anna', age: 34 },
  *     { name: 'Kim', age: 42 },
@@ -23,27 +24,34 @@
  * ```
  */
 export function sortBy<T>(
-  array: Array<T>,
+  array: readonly T[],
   selector:
     | ((el: T) => number)
     | ((el: T) => string)
     | ((el: T) => bigint)
     | ((el: T) => Date),
-): Array<T> {
-  const ret = Array.from(array);
+): T[] {
+  const len = array.length;
+  const indexes = new Array<number>(len);
+  const selectors = new Array<ReturnType<typeof selector> | null>(len);
 
-  return ret.sort((a, b) => {
-    const selectedA = selector(a);
-    const selectedB = selector(b);
+  for (let i = 0; i < len; i++) {
+    indexes[i] = i;
+    const s = selector(array[i]);
+    selectors[i] = Number.isNaN(s) ? null : s;
+  }
 
-    if (selectedA > selectedB) {
-      return 1;
-    }
-
-    if (selectedA < selectedB) {
-      return -1;
-    }
-
-    return 0;
+  indexes.sort((ai, bi) => {
+    const a = selectors[ai];
+    const b = selectors[bi];
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return a > b ? 1 : a < b ? -1 : 0;
   });
+
+  for (let i = 0; i < len; i++) {
+    (indexes as unknown as T[])[i] = array[indexes[i]];
+  }
+
+  return indexes as unknown as T[];
 }

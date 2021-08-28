@@ -146,7 +146,7 @@ export function equal(c: unknown, d: unknown): boolean {
       return true;
     }
     if (a && typeof a === "object" && b && typeof b === "object") {
-      if (a && b && (a.constructor !== b.constructor)) {
+      if (a && b && !constructorsEqual(a, b)) {
         return false;
       }
       if (a instanceof WeakMap || b instanceof WeakMap) {
@@ -209,6 +209,13 @@ export function equal(c: unknown, d: unknown): boolean {
     }
     return false;
   })(c, d);
+}
+
+// deno-lint-ignore ban-types
+function constructorsEqual(a: object, b: object) {
+  return a.constructor === b.constructor ||
+    a.constructor === Object && !b.constructor ||
+    !a.constructor && b.constructor === Object;
 }
 
 /** Make an assertion, error will be thrown if `expr` does not have truthy value. */
@@ -638,7 +645,7 @@ export function assertThrows<T = void>(
  * If it does not, then it throws.  An error class and a string that should be
  * included in the error message can also be asserted.
  */
-export async function assertThrowsAsync<T = void>(
+export async function assertRejects<T = void>(
   fn: () => Promise<T>,
   ErrorClass?: Constructor,
   msgIncludes = "",
@@ -675,6 +682,15 @@ export async function assertThrowsAsync<T = void>(
     throw new AssertionError(msg);
   }
 }
+
+/**
+ * Executes a function which returns a promise, expecting it to throw or reject.
+ * If it does not, then it throws.  An error class and a string that should be
+ * included in the error message can also be asserted.
+ *
+ * @deprecated
+ */
+export { assertRejects as assertThrowsAsync };
 
 /** Use this to stub out methods that will throw when invoked. */
 export function unimplemented(msg?: string): never {
