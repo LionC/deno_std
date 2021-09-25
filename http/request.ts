@@ -1,5 +1,6 @@
 import { ConnInfo } from "./server.ts";
 import { Expand } from "../_util/types.ts";
+import { associateBy } from "../collections/associate_by.ts";
 
 export class HttpRequest<C extends {} = {}> implements Request {
   #context: C;
@@ -179,3 +180,131 @@ export class HttpRequest<C extends {} = {}> implements Request {
     return this.request.clone();
   }
 }
+
+interface CookieStoreRead {
+  get(name: string): Promise<Cookie>;
+  get(options?: CookieStoreGetOptions): Promise<Cookie>;
+
+  getAll(name: string): Promise<Cookie[]>;
+  getAll(options?: CookieStoreGetOptions): Promise<Cookie[]>;
+}
+
+interface CookieStoreWrite {
+  set(name: string, value: string): Promise<void>;
+  set(options: CookieInit): Promise<void>;
+
+  delete(name: string): Promise<void>;
+  delete(options: CookieStoreDeleteOptions): Promise<void>;
+}
+
+interface CookieStore extends CookieStoreRead, CookieStoreWrite {
+}
+
+type CookieStoreGetOptions = {
+  name?: string;
+  url?: string;
+};
+
+type CookieSameSite =
+  | "strict"
+  | "lax"
+  | "none";
+
+type CookieInit = {
+  name: string;
+  value: string;
+  expires?: number; // = null;
+  domain?: string; // = undefined;
+  path?: string; // = "/";
+  sameSite?: CookieSameSite; // = "strict";
+};
+
+type CookieStoreDeleteOptions = {
+  name: string;
+  domain?: string; // = null;
+  path?: string; // = "/";
+};
+
+type Cookie = {
+  name: string;
+  value: string;
+  domain?: string;
+  path?: string;
+  expires?: number;
+  secure?: boolean;
+  sameSite?: CookieSameSite;
+};
+
+class HeaderCookieStoreReader implements CookieStoreRead {
+    #rawCookies: string | undefined | null = undefined
+    #parsedCookies?: Record<string, Cookie> = undefined
+
+    constructor(readonly headers: Headers) {}
+
+    private get raw() {
+        if (this.#rawCookies === undefined) {
+            const cookies = 
+            this.#rawCookies = this.headers.get('Cookie')
+        }
+
+        return this.#rawCookies
+    }
+
+    private get parsedCookies() {
+        if (this.#parsedCookies === undefined) {
+            if (this.raw === null) {
+                this.#parsedCookies = {}
+
+                return this.#parsedCookies
+            }
+
+            const cookies = this
+                .raw
+                .split('; ')
+                .map(this.parseRawCookie)
+
+            this.#parsedCookies = associateBy(cookies, it => it.name)
+        }
+
+        return this.#parsedCookies
+    }
+
+    private parseRawCookie(rawCookie: string) {
+        const index = rawCookie.indexOf('=')
+
+        return {
+            name: rawCookie.substr(0, index + 1),
+            value: rawCookie.substr(index),
+        }
+    }
+
+    async get(name: string) {
+        return this.parsedCookies[name]
+    }
+
+    async getAll() {
+        return Object.values(this.parsedCookies)
+    }
+}
+
+/**
+ * Parse cookies of a header
+ * @param {Headers} headers The headers instance to get cookies from
+ * @return {Object} Object with cookie names as keys
+ */
+export function getCookies(headers: Headers): Record<string, string> {
+  const cookie = headers.get("Cookie");
+  if (cookie != null) {
+    const out: Record<string, string> = {};
+    const c = cookie.split(";");
+    for (const kv of c) {
+      const [cookieKey, ...cookieVal] = kv.split("=");
+      assert(cookieKey != null);
+      const key = cookieKey.trim();
+      out[key] = cookieVal.join("=");
+    }
+    return out;
+  }
+  return {};
+}
+
