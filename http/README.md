@@ -1,12 +1,11 @@
 # http
 
-Deno's standard HTTP server based on the
-[blazing fast native http API](https://deno.land/manual/runtime/http_server_apis#http-server-apis)
-under the hood.
+Deno's standard HTTP server is based on the
+[blazing fast native http API](https://deno.land/manual/runtime/http_server_apis#http-server-apis).
 
 ## Minimal Server
 
-Run this file with `--allow-net` and try requesting `http://localhost:8000`:
+Run this file in your terminal with `--allow-net` and try requesting `http://localhost:8000`:
 
 ```ts
 import { listenAndServe } from "https://deno.land/std@$STD_VERSION/http/mod.ts";
@@ -24,7 +23,7 @@ and returns a [`Response`](https://doc.deno.land/builtin/stable#Response):
 export type Handler = (request: HttpRequest) => Response | Promise<Response>;
 ```
 
-`std/http` follows web standards, specifically parts of the Fetch API.
+`std/http` follows web standards, specifically parts of the Fetch API.\
 `HttpRequest` is an extension of the
 [`Request` web standard](https://developer.mozilla.org/en-US/docs/Web/API/Request),
 adding connection information and some helper functions to make it more
@@ -32,7 +31,7 @@ convenient to use on servers. The expected return value follows the same Fetch
 standard and is expected to be a
 [`Response`](https://developer.mozilla.org/en-US/docs/Web/API/Response).
 
-Here is an example handler that echoes the request body back:
+Here is an example handler that echoes the request body:
 
 ```typescript
 const handle: Handler = (req) => {
@@ -45,7 +44,7 @@ const handle: Handler = (req) => {
 
 ## HTTP Status Codes and Methods
 
-The `Status` and `Method` enums offers helper constants for standard HTTP status
+The `Status` and `Method` enums offer helper constants for standard HTTP status
 codes and methods:
 
 ```ts
@@ -75,8 +74,8 @@ responses like deserialization, compression, validation, CORS etc.
 
 A middleware is a special kind of `Handler` that can pass control on to a next
 handler during its flow, allowing it to only solve a specific part of handling
-the request without needing to know about the rest. As the handler it passes
-onto can be a middleware itself, this allows to build chains like this:
+the request without needing to know about the rest. The next handler can be
+also be middleware, this allows to build chains like this:
 
 ```
 Request ----------------------------------------->
@@ -87,9 +86,10 @@ log - authenticate - parseJson - validate - handle
 ```
 
 Middleware is just a handler that **can** call the next handler to pass on
-control. Middleware will sometimes be used to ensure that some condition is met
+control.\
+Middleware will sometimes be used to ensure that some condition is met
 before passing the request on (e.g. authentication, validation), to pre-process
-requests in some way to make handling it simpler and less repetitive
+requests in some way to make handling them simpler and less repetitive
 (deserialization, database preloading) or to format responses in some way (CORS,
 compression).
 
@@ -141,7 +141,7 @@ await listenAndServe(":8000", handler);
 ### Request Context
 
 Request context is a way to pass additional data between middlewares. Each
-`HttpRequest`s has an attached `context` object. Arbitrary properties with
+`HttpRequest` has an attached `context` object. Arbitrary properties with
 arbitrary data can be added to the context via the `.addContext()` method.
 
 Contexts are very strictly typed to prevent runtime errors due to missing
@@ -150,7 +150,7 @@ context data.
 ### Writing Middleware
 
 Writing a middleware is the same as writing a `Handler`, except that it gets
-passed an additional argument, which is the rest of the chain and should be
+passed an additional argument - the rest of the chain, which should be
 called to pass control on. Canonically, that parameter is called `next`.
 
 To write middleware in typescript, there are two things to decide upfront:
@@ -160,8 +160,9 @@ To write middleware in typescript, there are two things to decide upfront:
 2. Does your middleware add any data to the context for its following middleware
    to consume?
 
-Then you write a function using the `Middleware` type, which takes the two
-points above as optional type arguments, defaulting to the `EmptyContext` (which
+If the answer to both of these questions is no:
+Write a function using the `Middleware` type, which takes the two points above as
+optional type arguments, defaulting to the `EmptyContext` (which
 is an empty object). A simple middleware that logs requests could be written
 like this:
 
@@ -186,6 +187,7 @@ we can use the bare `Middleware` type here, which is short for
 `Middleware<EmptyContext, EmptyContext>`, meaning we depend on the empty context
 and add nothing.
 
+If the answer is yes:
 A middleware that ensures the incoming payload is yaml and parses it into the
 request context as `data` for following middleware to consume could be written
 like this:
